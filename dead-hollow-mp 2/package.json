@@ -1,0 +1,27 @@
+{
+  "name": "dead-hollow",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "description": "Multiplayer low-poly wave-survival zombie shooter (Node + ws + Three.js)",
+  "scripts": {
+    "dev": "concurrently -n server,web -c red,cyan \"node --watch server/index.js\" \"vite\"",
+    "build": "vite build",
+    "start": "node server/index.js",
+    "test": "node server/smoke-test.js && node test/client-boot.js",
+    "test:server": "node server/smoke-test.js",
+    "test:client": "node test/client-boot.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "three": "0.128.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "vite": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

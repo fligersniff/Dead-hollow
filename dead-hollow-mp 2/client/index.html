@@ -1,0 +1,95 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dead Hollow</title>
+<style>
+:root{--bg:#0b0d0c;--fg:#e8e6d9;--ac:#d33;--pt:#ec4;--ok:#4c6}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font:14px/1.4 ui-monospace,Menlo,Consolas,monospace;overflow:hidden}
+canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
+h1,h2{margin:0 0 8px;color:var(--ac);letter-spacing:3px}h2{font-size:18px}
+label{display:block;margin:5px 0}
+input[type=range]{width:140px;vertical-align:middle}
+input[type=text],select{font:inherit;background:#161a18;color:var(--fg);border:1px solid #fff4;padding:6px 8px}
+button{font:inherit;padding:8px 16px;margin:8px 6px 0 0;background:var(--ac);color:#fff;border:0;cursor:pointer}
+button.alt{background:#3a4440}button:disabled{opacity:.4;cursor:default}
+small,.dim{opacity:.7}
+/* HUD */
+#hud{position:fixed;inset:0;pointer-events:none;text-shadow:1px 1px 0 #000}
+#hud>*{position:absolute}
+#cross{left:50%;top:50%;width:6px;height:6px;margin:-3px;border:1px solid #fff;border-radius:50%;opacity:.8}
+#cross.hit{border-color:var(--ac);transform:scale(2)}
+#hp{left:16px;bottom:16px;width:160px;height:10px;background:#0008;border:1px solid #fff6}
+#hpf{height:100%;background:var(--ac);width:100%}
+#ammo{right:16px;bottom:14px;font-size:22px;text-align:right}
+#pts{left:16px;bottom:34px;font-size:22px;color:var(--pt)}
+#round{left:16px;top:12px;font-size:20px;color:var(--ac)}
+#team{right:16px;top:12px;text-align:right;font-size:13px}
+#team .down{color:#f96}#team .out{color:#888}
+#prompt{left:0;right:0;top:62%;text-align:center}
+#msg{left:0;right:0;top:22%;text-align:center;font-size:28px;color:var(--ac)}
+#dmg{inset:0;background:radial-gradient(transparent 40%,#c00);opacity:0}
+#chat{left:16px;bottom:62px;max-width:46%;font-size:13px}
+#sb{position:fixed;left:50%;top:16%;transform:translateX(-50%);background:#000d;border:1px solid #fff4;padding:12px 20px;pointer-events:none;z-index:5}
+#sb td,#sb th{padding:2px 12px;text-align:right}#sb td:first-child,#sb th:first-child{text-align:left}
+#ci{position:fixed;left:16px;bottom:96px;width:340px;background:#000c;color:#fff;border:1px solid #fff6;padding:6px;font:inherit;z-index:6}
+/* screens */
+.ov{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;text-align:center;padding:16px;overflow:auto;z-index:10}
+.hide{display:none!important}
+.panel{max-width:520px;width:100%;text-align:left}
+.panel h1{text-align:center}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}
+.card{background:#10140fcc;border:1px solid #fff2;padding:12px;margin:10px 0}
+#lplayers{list-style:none;margin:0;padding:0}
+#lplayers li{display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid #fff1}
+#lplayers .nm{flex:1}.tag{font-size:11px;padding:1px 6px;border:1px solid #fff4}.tag.host{color:var(--pt);border-color:var(--pt)}.tag.rdy{color:var(--ok);border-color:var(--ok)}
+#lchat{height:90px;overflow:auto;background:#0008;padding:6px;font-size:13px}
+#code{font-size:30px;letter-spacing:6px;color:var(--pt)}
+#conn{position:fixed;left:0;right:0;top:0;background:#a33;color:#fff;text-align:center;padding:6px;z-index:30}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#000d;border:1px solid var(--ac);padding:8px 14px;z-index:30;max-width:90%}
+</style></head><body>
+<canvas id="c"></canvas>
+<div id="hud" class="hide"><div id="dmg"></div><div id="cross"></div><div id="round"></div><div id="team"></div><div id="pts"></div>
+<div id="hp"><div id="hpf"></div></div><div id="ammo"></div><div id="chat"></div><div id="prompt"></div><div id="msg"></div></div>
+<div id="sb" class="hide"></div><input id="ci" maxlength="120" placeholder="say something (Enter = send, Esc = cancel)" class="hide">
+<div id="conn" class="hide"></div><div id="toast" class="hide"></div>
+
+<!-- main menu -->
+<div id="menu" class="ov"><div class="panel">
+ <h1>DEAD HOLLOW</h1><p class="dim" style="text-align:center">Co-op wave survival · 1-4 players per room · low-poly retro</p>
+ <div class="card"><label>Your name <input id="name" type="text" maxlength="16" placeholder="Player"></label></div>
+ <div class="card"><h2>Create a room</h2>
+  <div class="row"><label>Map <select id="cmap"></select></label><label>Mode <select id="cdiff"></select></label></div>
+  <button id="bcreate">CREATE ROOM</button></div>
+ <div class="card"><h2>Join a room</h2>
+  <div class="row"><input id="jcode" type="text" maxlength="4" size="6" placeholder="CODE" style="text-transform:uppercase;font-size:20px;letter-spacing:4px"><button id="bjoin" style="margin:0">JOIN</button></div></div>
+ <div class="card"><h2>Settings</h2><div id="settings1"></div></div>
+ <p class="dim"><b>WASD</b> move · <b>Shift</b> sprint · <b>Space</b> jump · <b>C</b> crouch · <b>LMB</b> fire · <b>R</b> reload · <b>Q</b> swap · <b>E</b> buy / open / hold to revive · <b>V</b> ping · <b>Enter</b> chat · <b>Tab</b> scoreboard · <b>Esc</b> menu</p>
+ <p class="dim" id="mstat"></p>
+</div></div>
+
+<!-- lobby -->
+<div id="lobby" class="ov hide"><div class="panel">
+ <h2>ROOM <span id="code"></span> <button id="lcopy" class="alt" style="margin:0 0 0 8px;padding:3px 8px">copy</button></h2>
+ <div class="card"><ul id="lplayers"></ul></div>
+ <div class="card" id="lhost"><div class="row"><label>Map <select id="lmap"></select></label><label>Mode <select id="ldiff"></select></label></div>
+  <button id="laddbot" class="alt">+ BOT</button><button id="lrmbot" class="alt">- BOT</button></div>
+ <div class="card" id="lguest"></div>
+ <div class="card"><div id="lchat"></div><input id="lci" type="text" maxlength="120" placeholder="chat (Enter to send)" style="width:100%;margin-top:6px"></div>
+ <div><button id="lready">READY</button><button id="lstart">START GAME</button><button id="lleave" class="alt">LEAVE</button></div>
+ <p id="lmsg" style="color:#f96"></p>
+</div></div>
+
+<!-- enter the game (needs a click for pointer lock + audio) -->
+<div id="enter" class="ov hide"><div class="panel" style="text-align:center"><h1>GET READY</h1><p id="enterinfo"></p><button id="benter">CLICK TO PLAY</button></div></div>
+
+<!-- pause (the game keeps running for everyone) -->
+<div id="pause" class="ov hide"><div class="panel"><h1>PAUSED</h1><p class="dim" style="text-align:center">The game keeps running for everyone.</p>
+ <div class="card"><div id="settings2"></div></div>
+ <div style="text-align:center"><button id="bresume">RESUME</button><button id="bleave2" class="alt">LEAVE ROOM</button></div></div></div>
+
+<!-- game over -->
+<div id="over" class="ov hide"><div class="panel" style="text-align:center"><h1 id="oh">GAME OVER</h1><p id="ovs"></p><div id="ovt"></div>
+ <button id="bre">REMATCH</button><button id="blob" class="alt">BACK TO LOBBY</button><button id="bleave3" class="alt">LEAVE ROOM</button><p class="dim" id="ovw"></p></div></div>
+
+<script type="module" src="/src/main.js"></script>
+</body></html>

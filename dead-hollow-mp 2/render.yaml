@@ -1,0 +1,12 @@
+# Render.com blueprint: one Node web service that serves the built client AND the /ws game socket on the same port.
+services:
+  - type: web
+    name: dead-hollow
+    runtime: node
+    plan: free
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: 20
